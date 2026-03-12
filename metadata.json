@@ -1,0 +1,5 @@
+{
+  "name": "m_dashboard",
+  "description": "A parts inventory optimization simulator that calculates safety stock and reorder points based on demand and lead time variability.",
+  "requestFramePermissions": []
+}
