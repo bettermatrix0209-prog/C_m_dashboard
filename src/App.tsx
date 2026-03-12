@@ -70,6 +70,21 @@ export default function App() {
     [baseData, muL, sigmaL, zScore]
   );
 
+  const userBaselineSS = baselineSafetyStock > 0 ? baselineSafetyStock : policy.SS;
+  const userBaselineROP = baselineRop > 0 ? baselineRop : policy.ROP;
+
+  // Global supply-chain crisis adjustment (scenario-based heuristic)
+  const crisisIndex = useMemo(() => {
+    const leadTimeRisk = muL > 0 ? sigmaL / muL : 0;
+    const demandRisk = baseData.mu_D > 0 ? baseData.sigma_D / baseData.mu_D : 0;
+    const servicePressure = Math.max(0, (serviceLevel - 95) / 5);
+    const raw = (leadTimeRisk * 0.45) + (demandRisk * 0.35) + (servicePressure * 0.2);
+    return Math.max(0, Math.min(1.2, raw));
+  }, [muL, sigmaL, baseData, serviceLevel]);
+
+  const crisisAdjustedSS = userBaselineSS * (1 + crisisIndex * 0.35);
+  const crisisAdjustedROP = userBaselineROP * (1 + crisisIndex * 0.25);
+
   // Simulation Data for Chart
   const chartData = useMemo(() => {
     const data = [];
@@ -207,6 +222,9 @@ export default function App() {
               <p className="text-[11px] text-emerald-900 mt-3 leading-relaxed font-medium">
                 평시 안전재고량은 평소 확보 목표치, 재발주 시점(ROP)은 재고가 이 수치 이하일 때 발주를 시작하는 기준입니다.
               </p>
+              <p className="text-[11px] text-emerald-800 mt-2 leading-relaxed">
+                현재 입력값 기준 공급망 위기 보정률: {Math.round(crisisIndex * 100)}%
+              </p>
             </div>
           </section>
 
@@ -263,7 +281,7 @@ export default function App() {
           <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-3">{hsCode} 분석 리포트</h2>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            서비스 수준 {serviceLevel}% 기준 계산
+            서비스 수준 {serviceLevel}% · 공급망 위기 보정 {Math.round(crisisIndex * 100)}%
           </div>
         </header>
 
@@ -271,14 +289,14 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <MetricCard
             title="안전재고량 (SS)"
-            value={policy.SS}
+            value={crisisAdjustedSS}
             unit="kg"
             icon={<Package className="w-5 h-5" />}
             color="indigo"
           />
           <MetricCard
             title="재발주 시점 (ROP)"
-            value={policy.ROP}
+            value={crisisAdjustedROP}
             unit="kg"
             icon={<Activity className="w-5 h-5" />}
             color="emerald"
