@@ -303,6 +303,7 @@ export default function App() {
           />
           <MetricCard
             title="리드타임 수요량"
+            subtitle="발주 후 입고될 때까지 기다리는 기간 동안 예상되는 총 수요"
             value={policy.mu_DL}
             unit="kg"
             icon={<Truck className="w-5 h-5" />}
@@ -421,13 +422,14 @@ export default function App() {
 
 interface MetricCardProps {
   title: string;
+  subtitle?: string;
   value: number;
   unit: string;
   icon: React.ReactNode;
   color: 'indigo' | 'emerald' | 'amber';
 }
 
-function MetricCard({ title, value, unit, icon, color }: MetricCardProps) {
+function MetricCard({ title, subtitle, value, unit, icon, color }: MetricCardProps) {
   const colorClasses = {
     indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
@@ -456,6 +458,7 @@ function MetricCard({ title, value, unit, icon, color }: MetricCardProps) {
       </div>
       <div>
         <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+        {subtitle && <p className="text-[11px] text-slate-400 mb-2 leading-relaxed">{subtitle}</p>}
         <div className="flex items-baseline gap-2">
           <h4 className="text-2xl font-bold text-slate-900">{Math.round(value).toLocaleString()}</h4>
           <span className="text-sm font-medium text-slate-400">{unit}</span>
