@@ -1,22 +1,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  Truck, 
-  Settings2, 
-  Info, 
-  ArrowRight,
+import {
+  Truck,
+  Settings2,
+  Info,
   Package,
   Activity,
-  BarChart3,
   ChevronRight
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
@@ -31,25 +28,32 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const HS_LABEL_TO_CODE = {
-  "870830 (Brakes)": "870830",
-  "870840 (Gear boxes)": "870840",
+  '870830 (브레이크 부품)': '870830',
+  '870840 (기어박스 부품)': '870840',
+} as const;
+
+const BASE_FORECASTS_BY_CODE = {
+  '870830': BASE_FORECASTS['870830 (Brakes)'],
+  '870840': BASE_FORECASTS['870840 (Gear boxes)'],
 } as const;
 
 type HsLabel = keyof typeof HS_LABEL_TO_CODE;
 
 export default function App() {
   // State
-  const [hsCode, setHsCode] = useState<HsLabel>("870830 (Brakes)");
+  const [hsCode, setHsCode] = useState<HsLabel>('870830 (브레이크 부품)');
   const [serviceLevel, setServiceLevel] = useState(98.0);
   const [muL, setMuL] = useState(15.0);
   const [sigmaL, setSigmaL] = useState(3.5);
+  const [baselineSafetyStock, setBaselineSafetyStock] = useState(0);
+  const [baselineRop, setBaselineRop] = useState(0);
 
   // Derived Data
   const selectedHsCode = HS_LABEL_TO_CODE[hsCode];
   const connectedModel = MODEL_SNAPSHOT.by_hs[selectedHsCode as keyof typeof MODEL_SNAPSHOT.by_hs];
   const baseData = connectedModel
     ? { mu_D: connectedModel.mu_D, sigma_D: connectedModel.sigma_D }
-    : BASE_FORECASTS[hsCode];
+    : BASE_FORECASTS_BY_CODE[selectedHsCode as keyof typeof BASE_FORECASTS_BY_CODE];
   const isConnected = Object.keys(MODEL_SNAPSHOT.by_hs).length > 0;
   const zScore = useMemo(() => pnorm(serviceLevel / 100), [serviceLevel]);
 
@@ -60,9 +64,9 @@ export default function App() {
     setMuL(connectedModel.mu_L);
     setSigmaL(connectedModel.sigma_L);
   }, [hsCode]);
-  
-  const policy = useMemo(() => 
-    calculateInventoryLogic(baseData.mu_D, baseData.sigma_D, muL, sigmaL, zScore),
+
+  const policy = useMemo(
+    () => calculateInventoryLogic(baseData.mu_D, baseData.sigma_D, muL, sigmaL, zScore),
     [baseData, muL, sigmaL, zScore]
   );
 
@@ -82,14 +86,14 @@ export default function App() {
 
   // Scenario Data
   const scenarios = useMemo(() => {
-    return [0.90, 0.95, 0.98, 0.99].map(lv => {
+    return [0.90, 0.95, 0.98, 0.99].map((lv) => {
       const z = pnorm(lv);
       const p = calculateInventoryLogic(baseData.mu_D, baseData.sigma_D, muL, sigmaL, z);
       return {
         level: `${Math.round(lv * 100)}%`,
         ss: p.SS,
         rop: p.ROP,
-        coverDays: p.ROP / baseData.mu_D
+        coverDays: p.ROP / baseData.mu_D,
       };
     });
   }, [baseData, muL, sigmaL]);
@@ -102,40 +106,42 @@ export default function App() {
           <div className="p-2 bg-indigo-600 rounded-lg">
             <Activity className="w-6 h-6 text-white" />
           </div>
-          <h1 className="font-bold text-xl tracking-tight text-slate-800">Inventory Opt</h1>
+          <h1 className="font-bold text-xl tracking-tight text-slate-800">재고 최적화</h1>
         </div>
 
         <div className="space-y-8">
           <section>
             <div className="flex items-center gap-2 mb-4 text-slate-500">
               <Settings2 className="w-4 h-4" />
-              <h2 className="text-xs font-semibold uppercase tracking-wider">Parameters</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wider">기본 설정</h2>
             </div>
-            
+
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">HS Code (Item)</label>
-                <select 
+                <label className="block text-sm font-medium text-slate-700 mb-2">품목 코드 (HS)</label>
+                <select
                   value={hsCode}
                   onChange={(e) => setHsCode(e.target.value as HsLabel)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm"
                 >
-                  {Object.keys(HS_LABEL_TO_CODE).map(code => (
-                    <option key={code} value={code}>{code}</option>
+                  {Object.keys(HS_LABEL_TO_CODE).map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
                 <div className="flex justify-between mb-2">
-                  <label className="text-sm font-medium text-slate-700">Service Level</label>
+                  <label className="text-sm font-medium text-slate-700">서비스 수준</label>
                   <span className="text-sm font-bold text-indigo-600">{serviceLevel}%</span>
                 </div>
-                <input 
-                  type="range" 
-                  min="80" 
-                  max="99.9" 
-                  step="0.1" 
+                <input
+                  type="range"
+                  min="80"
+                  max="99.9"
+                  step="0.1"
                   value={serviceLevel}
                   onChange={(e) => setServiceLevel(parseFloat(e.target.value))}
                   className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
@@ -151,26 +157,55 @@ export default function App() {
           <section>
             <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-indigo-700">사용자 데이터 연결</h2>
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full text-[10px] font-bold border",
-                  isConnected
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-slate-100 text-slate-600 border-slate-200"
-                )}>
-                  {isConnected ? "Connected" : "Not Connected"}
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-indigo-700">모델링 재료 데이터</h2>
+                <span
+                  className={cn(
+                    'px-2 py-0.5 rounded-full text-[10px] font-bold border',
+                    isConnected
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-slate-100 text-slate-600 border-slate-200'
+                  )}
+                >
+                  {isConnected ? '연결됨' : '미연결'}
                 </span>
               </div>
-              <p className="text-xs text-slate-700">
-                {MODEL_SNAPSHOT.source_file}
-              </p>
+              <p className="text-xs text-slate-700">{MODEL_SNAPSHOT.source_file}</p>
               {connectedModel && (
                 <p className="text-[11px] text-slate-500 mt-1">
                   {selectedHsCode} 최신 기준월: {connectedModel.latest_date}
                 </p>
               )}
               <p className="text-[11px] text-indigo-900 mt-3 leading-relaxed font-medium">
-                안내: 사용자 데이터는 서버에서만 구동되며 저장되지 않습니다.
+                안내: 이 파일은 사용자 입력값이 아니라 예측 계산에 사용하는 모델링 재료 데이터입니다.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-emerald-700 mb-2">사용자 입력 기준</h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">평시 안전재고량 (kg)</label>
+                  <input
+                    type="number"
+                    value={baselineSafetyStock}
+                    onChange={(e) => setBaselineSafetyStock(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">재발주 시점 ROP (kg)</label>
+                  <input
+                    type="number"
+                    value={baselineRop}
+                    onChange={(e) => setBaselineRop(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-emerald-900 mt-3 leading-relaxed font-medium">
+                평시 안전재고량은 평소 확보 목표치, 재발주 시점(ROP)은 재고가 이 수치 이하일 때 발주를 시작하는 기준입니다.
               </p>
             </div>
           </section>
@@ -178,23 +213,23 @@ export default function App() {
           <section>
             <div className="flex items-center gap-2 mb-4 text-slate-500">
               <Truck className="w-4 h-4" />
-              <h2 className="text-xs font-semibold uppercase tracking-wider">Logistics Setup</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wider">물류 설정</h2>
             </div>
-            
+
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Avg Lead Time (Days)</label>
-                <input 
-                  type="number" 
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">평균 리드타임 (일)</label>
+                <input
+                  type="number"
                   value={muL}
                   onChange={(e) => setMuL(parseFloat(e.target.value) || 0)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Lead Time Variability (σ)</label>
-                <input 
-                  type="number" 
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">리드타임 변동성 (σ)</label>
+                <input
+                  type="number"
                   value={sigmaL}
                   onChange={(e) => setSigmaL(parseFloat(e.target.value) || 0)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
@@ -208,10 +243,10 @@ export default function App() {
           <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
             <div className="flex items-center gap-2 mb-2 text-indigo-700">
               <Info className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase">Pro Tip</span>
+              <span className="text-xs font-bold uppercase">운영 팁</span>
             </div>
             <p className="text-xs text-indigo-900 leading-relaxed">
-              Increasing service level exponentially increases safety stock requirements. Balance cost vs. availability.
+              서비스 수준을 올릴수록 안전재고 필요량이 빠르게 증가합니다. 재고비용과 품절위험의 균형을 맞춰 운영하세요.
             </p>
           </div>
         </div>
@@ -221,39 +256,37 @@ export default function App() {
       <main className="lg:ml-80 p-6 lg:p-10 max-w-7xl mx-auto">
         <header className="mb-10">
           <div className="flex items-center gap-2 text-slate-500 text-sm mb-2">
-            <span>Dashboard</span>
+            <span>대시보드</span>
             <ChevronRight className="w-4 h-4" />
-            <span className="text-slate-900 font-medium">Inventory Analysis</span>
+            <span className="text-slate-900 font-medium">재고 분석</span>
           </div>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-3">
-            {hsCode} Analysis Report
-          </h2>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight mb-3">{hsCode} 분석 리포트</h2>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Optimal metrics for {serviceLevel}% service level
+            서비스 수준 {serviceLevel}% 기준 계산
           </div>
         </header>
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <MetricCard 
-            title="Safety Stock (SS)" 
-            value={policy.SS} 
-            unit="kg" 
+          <MetricCard
+            title="안전재고량 (SS)"
+            value={policy.SS}
+            unit="kg"
             icon={<Package className="w-5 h-5" />}
             color="indigo"
           />
-          <MetricCard 
-            title="Reorder Point (ROP)" 
-            value={policy.ROP} 
-            unit="kg" 
+          <MetricCard
+            title="재발주 시점 (ROP)"
+            value={policy.ROP}
+            unit="kg"
             icon={<Activity className="w-5 h-5" />}
             color="emerald"
           />
-          <MetricCard 
-            title="Lead Time Demand" 
-            value={policy.mu_DL} 
-            unit="kg" 
+          <MetricCard
+            title="리드타임 수요량"
+            value={policy.mu_DL}
+            unit="kg"
             icon={<Truck className="w-5 h-5" />}
             color="amber"
           />
@@ -263,55 +296,55 @@ export default function App() {
         <section className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm mb-10">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h3 className="text-lg font-bold text-slate-800">Safety Stock Simulation</h3>
-              <p className="text-sm text-slate-500">Required stock vs. service level targets</p>
+              <h3 className="text-lg font-bold text-slate-800">안전재고 시뮬레이션</h3>
+              <p className="text-sm text-slate-500">서비스 수준 목표에 따른 필요 안전재고</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-indigo-600" />
-                <span className="text-xs text-slate-600">Safety Stock</span>
+                <span className="text-xs text-slate-600">안전재고량</span>
               </div>
             </div>
           </div>
-          
+
           <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis 
-                  dataKey="sl" 
-                  axisLine={false} 
-                  tickLine={false} 
+                <XAxis
+                  dataKey="sl"
+                  axisLine={false}
+                  tickLine={false}
                   tick={{ fontSize: 12, fill: '#64748B' }}
-                  label={{ value: 'Service Level (%)', position: 'insideBottom', offset: -10, fontSize: 12, fill: '#94A3B8' }}
+                  label={{ value: '서비스 수준 (%)', position: 'insideBottom', offset: -10, fontSize: 12, fill: '#94A3B8' }}
                 />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
                   tick={{ fontSize: 12, fill: '#64748B' }}
-                  label={{ value: 'Safety Stock (kg)', angle: -90, position: 'insideLeft', fontSize: 12, fill: '#94A3B8' }}
+                  label={{ value: '안전재고량 (kg)', angle: -90, position: 'insideLeft', fontSize: 12, fill: '#94A3B8' }}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '12px',
+                    border: 'none',
                     boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
                     fontSize: '12px'
                   }}
-                  formatter={(value: number) => [`${value.toLocaleString()} kg`, 'Safety Stock']}
-                  labelFormatter={(label) => `Service Level: ${label}%`}
+                  formatter={(value: number) => [`${value.toLocaleString()} kg`, '안전재고량']}
+                  labelFormatter={(label) => `서비스 수준: ${label}%`}
                 />
-                <ReferenceLine 
-                  x={serviceLevel.toFixed(1)} 
-                  stroke="#F43F5E" 
-                  strokeDasharray="3 3" 
-                  label={{ value: 'Current', position: 'top', fill: '#F43F5E', fontSize: 10, fontWeight: 'bold' }} 
+                <ReferenceLine
+                  x={serviceLevel.toFixed(1)}
+                  stroke="#F43F5E"
+                  strokeDasharray="3 3"
+                  label={{ value: '현재값', position: 'top', fill: '#F43F5E', fontSize: 10, fontWeight: 'bold' }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="ss" 
-                  stroke="#4F46E5" 
-                  strokeWidth={3} 
+                <Line
+                  type="monotone"
+                  dataKey="ss"
+                  stroke="#4F46E5"
+                  strokeWidth={3}
                   dot={false}
                   activeDot={{ r: 6, strokeWidth: 0 }}
                 />
@@ -323,17 +356,17 @@ export default function App() {
         {/* Table Section */}
         <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-6 border-bottom border-slate-100">
-            <h3 className="text-lg font-bold text-slate-800">Scenario Guide</h3>
-            <p className="text-sm text-slate-500">Comparative inventory strategy by service level</p>
+            <h3 className="text-lg font-bold text-slate-800">시나리오 비교표</h3>
+            <p className="text-sm text-slate-500">서비스 수준별 재고 운영 비교</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-y border-slate-100">
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Service Level</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Safety Stock (SS)</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Reorder Point (ROP)</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Coverage Days</th>
+                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">서비스 수준</th>
+                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">안전재고량 (SS)</th>
+                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">재발주 시점 (ROP)</th>
+                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">커버 일수</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -348,11 +381,11 @@ export default function App() {
                     <td className="px-6 py-4 text-sm font-medium text-slate-700">{Math.round(s.rop).toLocaleString()} kg</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900">{s.coverDays.toFixed(1)} days</span>
+                        <span className="text-sm font-bold text-slate-900">{s.coverDays.toFixed(1)}일</span>
                         <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-indigo-500" 
-                            style={{ width: `${Math.min(100, (s.coverDays / 30) * 100)}%` }} 
+                          <div
+                            className="h-full bg-indigo-500"
+                            style={{ width: `${Math.min(100, (s.coverDays / 30) * 100)}%` }}
                           />
                         </div>
                       </div>
@@ -378,29 +411,29 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, unit, icon, color }: MetricCardProps) {
   const colorClasses = {
-    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    amber: "bg-amber-50 text-amber-600 border-amber-100"
+    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    amber: 'bg-amber-50 text-amber-600 border-amber-100'
   };
 
   const iconBgClasses = {
-    indigo: "bg-indigo-600",
-    emerald: "bg-emerald-600",
-    amber: "bg-amber-600"
+    indigo: 'bg-indigo-600',
+    emerald: 'bg-emerald-600',
+    amber: 'bg-amber-600'
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
     >
       <div className="flex items-center justify-between mb-4">
-        <div className={cn("p-2 rounded-lg text-white", iconBgClasses[color])}>
+        <div className={cn('p-2 rounded-lg text-white', iconBgClasses[color])}>
           {icon}
         </div>
-        <div className={cn("px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border", colorClasses[color])}>
-          Live Metric
+        <div className={cn('px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border', colorClasses[color])}>
+          실시간 지표
         </div>
       </div>
       <div>
