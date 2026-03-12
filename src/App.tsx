@@ -172,7 +172,7 @@ export default function App() {
           <section>
             <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-indigo-700">모델링 재료 데이터</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-indigo-700">데이터 안내</h2>
                 <span
                   className={cn(
                     'px-2 py-0.5 rounded-full text-[10px] font-bold border',
@@ -184,14 +184,8 @@ export default function App() {
                   {isConnected ? '연결됨' : '미연결'}
                 </span>
               </div>
-              <p className="text-xs text-slate-700">{MODEL_SNAPSHOT.source_file}</p>
-              {connectedModel && (
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {selectedHsCode} 최신 기준월: {connectedModel.latest_date}
-                </p>
-              )}
-              <p className="text-[11px] text-indigo-900 mt-3 leading-relaxed font-medium">
-                안내: 이 파일은 사용자 입력값이 아니라 예측 계산에 사용하는 모델링 재료 데이터입니다.
+              <p className="text-[11px] text-indigo-900 mt-2 leading-relaxed font-medium">
+                사용자의 데이터는 저장되지 않습니다.
               </p>
             </div>
           </section>
