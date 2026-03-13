@@ -40,6 +40,11 @@ const BASE_FORECASTS_BY_CODE = {
 type HsLabel = keyof typeof HS_LABEL_TO_CODE;
 
 export default function App() {
+  useEffect(() => {
+    document.documentElement.lang = "ko";
+    document.documentElement.classList.add("notranslate");
+  }, []);
+
   // State
   const [hsCode, setHsCode] = useState<HsLabel>('870830 (브레이크 부품)');
   const [serviceLevel, setServiceLevel] = useState(98.0);
