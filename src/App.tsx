@@ -90,6 +90,25 @@ export default function App() {
   const crisisAdjustedSS = userBaselineSS * (1 + crisisIndex * 0.35);
   const crisisAdjustedROP = userBaselineROP * (1 + crisisIndex * 0.25);
 
+  const displayedLeadTimeDemand = useMemo(() => {
+    const serviceAdj = 1 + Math.max(0, serviceLevel - 95) / 100;
+    const riskAdj = 1 + (crisisIndex * 0.15);
+
+    const ropAdj = baselineRop > 0 && policy.ROP > 0 ? baselineRop / policy.ROP : 1;
+    const ssAdj = baselineSafetyStock > 0 && policy.SS > 0 ? baselineSafetyStock / policy.SS : 1;
+    const userAdj = Math.sqrt(Math.max(0.01, ropAdj) * Math.max(0.01, ssAdj));
+
+    return policy.mu_DL * serviceAdj * riskAdj * userAdj;
+  }, [
+    serviceLevel,
+    crisisIndex,
+    baselineRop,
+    baselineSafetyStock,
+    policy.mu_DL,
+    policy.ROP,
+    policy.SS,
+  ]);
+
   // Simulation Data for Chart
   const chartData = useMemo(() => {
     const data = [];
@@ -303,7 +322,7 @@ export default function App() {
           <MetricCard
             title="리드타임 수요량"
             subtitle="발주 후 입고될 때까지 기다리는 기간 동안 예상되는 총 수요"
-            value={policy.mu_DL}
+            value={displayedLeadTimeDemand}
             unit="kg"
             icon={<Truck className="w-5 h-5" />}
             color="amber"
